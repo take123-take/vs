@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>メモ帳アプリ</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+    }
+    #canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #f0f0f0;
+    }
+    .note {
+      position: absolute;
+      background-color: yellow;
+      padding: 10px;
+      border: 1px solid black;
+      border-radius: 5px;
+      cursor: move;
+      z-index: 1;
+      resize: both;
+      overflow: hidden;
+    }
+    textarea {
+      width: 100%;
+      height: 100%;
+      border: none;
+      resize: none;
+      background-color: transparent;
+    }
+    button {
+      position: fixed;
+      top: 20px;
+      padding: 10px;
+      margin-bottom: 10px;
+      z-index: 100;
+    }
+    #addNoteButton {
+      left: 20px;
+    }
+    #clearNotesButton {
+      left: 160px;
+    }
+    .deleteButton {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      background-color: red;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      font-size: 12px;
+      cursor: pointer;
+      padding: 0;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <button id="addNoteButton">メモを追加</button>
+  <button id="clearNotesButton">メモを全削除</button>
+  <canvas id="canvas"></canvas>
+
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    let lines = [];
+    let startNote = null;  // 最初にクリックされたメモを保持
+
+    canvas.width = window.innerWidth;  // 画面幅に合わせる
+    canvas.height = window.innerHeight;  // 画面高さに合わせる
+
+    // ウィンドウリサイズ時に線を再描画
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      redrawLines();  // 線の再描画
+    });
+
+    document.getElementById("addNoteButton").addEventListener("click", addNote);
+    document.getElementById("clearNotesButton").addEventListener("click", clearNotes);
+
+    // ページ読み込み時にデータを復元
+    window.addEventListener("load", loadNotes);
+
+    // メモを追加する関数
+    function addNote() {
+      const note = document.createElement("div");
+      note.classList.add("note");
+      note.id = `note${Date.now()}`;  // ユニークなIDを付けて重複を防ぐ
+      note.style.top = "100px";
+      note.style.left = "100px";
+      note.draggable = true;
+
+      const textarea = document.createElement("textarea");
+      textarea.textContent = "新しいメモ";
+
+      // 削除ボタンを作成
+      const deleteButton = document.createElement("button");
+      deleteButton.classList.add("deleteButton");
+      deleteButton.textContent = "×";
+      deleteButton.addEventListener("click", () => {
+        deleteNoteAndLines(note);  // メモと線を削除
+      });
+
+      note.appendChild(deleteButton);
+      note.appendChild(textarea);
+      document.body.appendChild(note);
+
+      addDragAndDrop(note);
+      addClickEvent(note);
+
+      saveNotes();  // メモを追加したら保存
+    }
+
+    // メモとそれに関連する線を削除する関数
+    function deleteNoteAndLines(note) {
+      // 削除するメモのID
+      const noteId = note.id;
+
+      // メモを削除
+      note.remove();
+
+      // メモに関連する線も削除
+      lines = lines.filter(line => line.start !== noteId && line.end !== noteId);
+
+      redrawLines();  // 線を再描画
+
+      saveNotes();  // 更新したデータを保存
+    }
+
+    // ドラッグ＆ドロップ機能を追加
+    function addDragAndDrop(note) {
+      let offsetX, offsetY;
+
+      note.addEventListener("dragstart", (e) => {
+        offsetX = e.clientX - note.offsetLeft;
+        offsetY = e.clientY - note.offsetTop;
+        note.style.zIndex = 10;
+      });
+
+      note.addEventListener("dragend", () => {
+        note.style.zIndex = "";
+        saveNotes();  // ドラッグ終了時に保存
+      });
+
+      document.body.addEventListener("dragover", (e) => {
+        e.preventDefault();
+      });
+
+      note.addEventListener("drag", (e) => {
+        note.style.left = `${e.clientX - offsetX}px`;
+        note.style.top = `${e.clientY - offsetY}px`;
+        redrawLines();  // メモをドラッグした後に線を再描画
+      });
+    }
+
+    // メモをクリックして線を描く処理
+    function addClickEvent(note) {
+      note.addEventListener("mousedown", (e) => {
+        if (startNote === null) {
+          // 最初のメモを選択
+          startNote = note;
+          note.style.border = "2px solid blue";  // 選択中のメモをハイライト
+        } else {
+          // 2回目のメモを選択して線を描画
+          const startRect = startNote.getBoundingClientRect();
+          const endRect = note.getBoundingClientRect();
+
+          // 線を保存
+          const line = {
+            start: startNote.id,
+            end: note.id,
+            x1: startRect.left + startRect.width / 2,
+            y1: startRect.top + startRect.height / 2,
+            x2: endRect.left + endRect.width / 2,
+            y2: endRect.top + endRect.height / 2,
+          };
+          lines.push(line);
+          drawLine(line);
+
+          // ハイライト解除とリセット
+          startNote.style.border = "";
+          startNote = null;
+
+          saveNotes();  // 線を追加した後に保存
+        }
+      });
+
+      // 右クリックで線を削除
+      note.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        removeLinesConnectedTo(note.id);
+        saveNotes();  // 線削除後に保存
+      });
+    }
+
+    // 線を描画
+    function drawLine(line) {
+      ctx.beginPath();
+      ctx.moveTo(line.x1, line.y1);
+      ctx.lineTo(line.x2, line.y2);
+      ctx.strokeStyle = "black";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // 特定のメモに繋がる線を削除
+    function removeLinesConnectedTo(noteId) {
+      for (let i = lines.length - 1; i >= 0; i--) {
+        if (lines[i].start === noteId || lines[i].end === noteId) {
+          lines.splice(i, 1);
+        }
+      }
+      redrawLines();  // 線を再描画
+    }
+
+    // 線を再描画
+    function redrawLines() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);  // キャンバスをクリア
+      if (document.querySelectorAll(".note").length > 1) {  // メモ帳が2つ以上ある場合のみ線を描画
+        lines.forEach((line) => {
+          const startNote = document.getElementById(line.start);
+          const endNote = document.getElementById(line.end);
+          if (startNote && endNote) {
+            const startRect = startNote.getBoundingClientRect();
+            const endRect = endNote.getBoundingClientRect();
+            line.x1 = startRect.left + startRect.width / 2;
+            line.y1 = startRect.top + startRect.height / 2;
+            line.x2 = endRect.left + endRect.width / 2;
+            line.y2 = endRect.top + endRect.height / 2;
+            drawLine(line);
+          }
+        });
+      }
+    }
+
+    // メモ帳を全削除する関数
+    function clearNotes() {
+      const notes = document.querySelectorAll(".note");
+      notes.forEach(note => note.remove());
+      lines.length = 0;  // すべての線も削除
+      ctx.clearRect(0, 0, canvas.width, canvas.height);  // キャンバスをクリア
+      saveNotes();  // データを保存（空に）
+    }
+
+    // メモ帳と線の状態を localStorage に保存
+    function saveNotes() {
+      const notes = document.querySelectorAll(".note");
+      const notesData = [];
+      notes.forEach(note => {
+        const rect = note.getBoundingClientRect();
+        notesData.push({
+          id: note.id,
+          top: rect.top,
+          left: rect.left,
+          content: note.querySelector("textarea").value
+        });
+      });
+
+      // 保存する線のデータ
+      const linesData = lines.map(line => ({
+        start: line.start,
+        end: line.end
+      }));
+
+      localStorage.setItem("notes", JSON.stringify(notesData));
+      localStorage.setItem("lines", JSON.stringify(linesData));
+    }
+
+    // 保存されたメモ帳の状態を読み込む
+    function loadNotes() {
+      const savedNotes = JSON.parse(localStorage.getItem("notes") || "[]");
+      const savedLines = JSON.parse(localStorage.getItem("lines") || "[]");
+
+      savedNotes.forEach(noteData => {
+        const note = document.createElement("div");
+        note.classList.add("note");
+        note.id = noteData.id;
+        note.style.top = `${noteData.top}px`;
+        note.style.left = `${noteData.left}px`;
+
+        const textarea = document.createElement("textarea");
+        textarea.value = noteData.content;
+
+        // 削除ボタンを作成
+        const deleteButton = document.createElement("button");
+        deleteButton.classList.add("deleteButton");
+        deleteButton.textContent = "×";
+        deleteButton.addEventListener("click", () => {
+          deleteNoteAndLines(note);
+        });
+
+        note.appendChild(deleteButton);
+        note.appendChild(textarea);
+        document.body.appendChild(note);
+
+        addDragAndDrop(note);
+        addClickEvent(note);
+      });
+
+      lines = savedLines;
+      redrawLines();  // 線を描画
+    }
+  </script>
+</body>
+</html>
