@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数独</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f9;
+        }
+
+        .sudoku-grid {
+            display: grid;
+            grid-template-columns: repeat(9, 50px);
+            grid-template-rows: repeat(9, 50px);
+            gap: 0;
+            border: 4px solid #333; /* 外枠は太線 */
+        }
+
+        .cell {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+            text-align: center;
+            border: 1px solid #ccc; /* 内部の枠線は細くする */
+        }
+
+        .cell input {
+            width: 80%;
+            height: 80%;
+            text-align: center;
+            font-size: 18px;
+            border: none;
+        }
+
+        /* 3x3ブロックごとの外枠を太線にする */
+        .sudoku-grid .cell:nth-child(3n) {
+            border-right: 3px solid #333; /* 3列ごとに右側に太線 */
+        }
+
+        /* 3行目19番から27番の下線を太線にする */
+        .sudoku-grid .cell:nth-child(n+19):nth-child(-n+27) {
+            border-bottom: 3px solid #333; /* 3行目の19番から27番まで */
+        }
+
+        /* 6行目46番から54番の下線を太線にする */
+        .sudoku-grid .cell:nth-child(n+46):nth-child(-n+54) {
+            border-bottom: 3px solid #333; /* 6行目の46番から54番まで */
+        }
+
+        /* 9行目の下線（73〜81番目のセル）だけ太線にする */
+        .sudoku-grid .cell:nth-child(n+73):nth-child(-n+81) {
+            border-bottom: 3px solid #333;
+        }
+
+    </style>
+</head>
+<body>
+
+    <form method="POST">
+        <div class="sudoku-grid">
+            {% for row in range(9) %}
+                {% for col in range(9) %}
+                    <div class="cell">
+                        <input type="text" maxlength="1" name="cell_{{ row }}_{{ col }}" value="{{ board[row][col] if board[row][col] != 0 else '' }}">
+                    </div>
+                {% endfor %}
+            {% endfor %}
+        </div>
+        <br>
+        <div style="text-align: center;">
+            <button type="submit">解く</button>
+        </div>
+    </form>
+
+</body>
+</html>

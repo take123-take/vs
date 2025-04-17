@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数独の解</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column; /* 上から下へのレイアウト */
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f9;
+        }
+
+        .sudoku-grid {
+            display: grid;
+            grid-template-columns: repeat(9, 50px);
+            grid-template-rows: repeat(9, 50px);
+            gap: 0;
+            border: 4px solid #333;
+        }
+
+        .cell {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+            text-align: center;
+            border: 1px solid #ccc;
+        }
+
+        .cell input {
+            width: 80%;
+            height: 80%;
+            text-align: center;
+            font-size: 18px;
+            border: none;
+            background-color: #f0f0f0;
+        }
+
+        .cell input:disabled {
+            background-color: #d3d3d3;
+        }
+
+        /* 3x3ブロックごとの外枠を太線にする */
+        .sudoku-grid .cell:nth-child(3n) {
+            border-right: 3px solid #333;
+        }
+
+        /* 3行目19番から27番の下線を太線にする */
+        .sudoku-grid .cell:nth-child(n+19):nth-child(-n+27) {
+            border-bottom: 3px solid #333;
+        }
+
+        /* 6行目46番から54番の下線を太線にする */
+        .sudoku-grid .cell:nth-child(n+46):nth-child(-n+54) {
+            border-bottom: 3px solid #333;
+        }
+
+        /* 9行目の下線だけ太線にする */
+        .sudoku-grid .cell:nth-child(n+73):nth-child(-n+81) {
+            border-bottom: 3px solid #333;
+        }
+
+        /* 戻るボタンのスタイル */
+        .back-button {
+            display: inline-block; /* インラインブロックに変更 */
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            text-align: center;
+            border-radius: 5px;
+            text-decoration: none; /* リンクの下線を消す */
+        }
+
+        .back-button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sudoku-grid">
+        {% for row in range(9) %}
+            {% for col in range(9) %}
+                <div class="cell">
+                    <input type="text" value="{{ board[row][col] }}" disabled>
+                </div>
+            {% endfor %}
+        {% endfor %}
+    </div>
+
+    <!-- 戻るボタン -->
+    <a href="/" class="back-button">戻る</a>
+
+</body>
+</html>
